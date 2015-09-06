@@ -1,0 +1,36 @@
+#!/bin/bash
+set -o errexit
+set -o nounset
+set -o pipefail
+
+PROVIDER=${PROVIDER:-"virtualbox"}
+CLUSTER_NAME=${CLUSTER_NAME:-"core"}
+
+function wupiao {
+	# [w]ait [u]ntil [p]ort [i]s [a]ctually [o]pen
+    [ -n "$1" ] && until curl -o /dev/null -sIf http://${1}; do
+        sleep 1 && echo -n .;
+      done;
+    return $?
+}
+
+echo "Provisioning vagrant box"
+vagrant up --provider ${PROVIDER}
+
+if [ ! -x "$(command -v kubectl)" ]; then
+	echo "Setting up kubectl"
+	wget https://kuar.io/darwin/kubectl
+	chmod +x kubectl
+	mv kubectl /usr/local/bin
+fi
+
+echo "Waiting for cluster to be up"
+wupiao '172.17.8.101:8080'
+echo ""
+kubectl config set-cluster ${CLUSTER_NAME} --server=http://172.17.8.101:8080 
+
+echo "Configuring cluster addons"
+kubectl --cluster=${CLUSTER_NAME} create -f k8s/kube-ui-rc.yaml --namespace=kube-system
+kubectl --cluster=${CLUSTER_NAME} create -f k8s/kube-ui-svc.yaml --namespace=kube-system
+kubectl --cluster=${CLUSTER_NAME} create -f k8s/skydns-rc.yaml --namespace=kube-system
+kubectl --cluster=${CLUSTER_NAME} create -f k8s/skydns-svc.yaml --namespace=kube-system

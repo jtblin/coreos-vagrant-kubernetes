@@ -1,0 +1,50 @@
+#cloud-config
+
+---
+coreos:
+  flannel:
+    interface: $public_ipv4
+  units:
+  - name: docker-tcp.socket
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Docker Socket for the API
+
+      [Socket]
+      ListenStream=2375
+      Service=docker.service
+      BindIPv6Only=both
+
+      [Install]
+      WantedBy=sockets.target
+  - name: kubelet.service
+    command: start
+    content: |
+      [Unit]
+      Description=Kubernetes Kubelet
+      Documentation=https://github.com/kubernetes/kubernetes
+
+      [Service]
+      ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
+      ExecStart=/usr/bin/kubelet \
+        --api-servers=http://127.0.0.1:8080 \
+        --allow-privileged=true \
+        --config=/etc/kubernetes/manifests \
+        --cluster_domain=cluster.local \
+        --cluster_dns=10.100.0.10 \
+        --v=2
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  update:
+    group: alpha
+    reboot-strategy: 'off'
+write_files:
+- path: /etc/kubernetes/manifests/kubernetes.yaml
+  owner: core:core
+  permissions: 420
+  content: 
