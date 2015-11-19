@@ -13,7 +13,7 @@ After setup is complete you will have a single CoreOS virtual machine with Kuber
 2) Clone this project and get it running!
 
 ```
-git clone https://github.com/jtblin/coreos-kube-vagrant/
+git clone https://github.com/jtblin/coreos-vagrant-kubernetes.git
 cd coreos-kube-vagrant
 ```
 
